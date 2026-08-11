@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checklist Mesas - Papelera del Sur</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- HEADER: placeholder a reemplazar por el header compartido del portal
+         (mismo logo/nav que EHS, Tarjetas y Mejora) apenas me pases el kit -->
+    <header class="topbar">
+      <div class="brand">
+        <a href="../index.html" class="volver-portal" title="Volver al portal">&larr;</a>
+        <div>
+          <span class="brand-title">CHECKLIST MESAS</span>
+          <span class="brand-sub">Papelera del Sur · Planta Tornquist</span>
+        </div>
+      </div>
+      <div id="reloj" class="reloj">--:--:--</div>
+    </header>
+
+    <section id="pantallaLogin" class="pantalla">
+      <div class="card">
+        <h2>Identificación</h2>
+        <label for="selSector">Sector</label>
+        <select id="selSector"><option value="">Cargando sectores...</option></select>
+        <label for="selOperario">Operario</label>
+        <select id="selOperario" disabled><option value="">Elegí primero el sector</option></select>
+        <button id="btnIngresar" class="btn btn-primary" disabled>Ingresar</button>
+      </div>
+    </section>
+
+    <section id="pantallaInicio" class="pantalla oculto">
+      <div class="info-turno">
+        <div><b id="lblOperario">-</b></div>
+        <div id="lblTurnoFecha">Turno - Fecha</div>
+        <div id="lblSectorActual" class="badge-sector"></div>
+      </div>
+
+      <h3 class="section-title">Recorridas del turno</h3>
+      <div id="grillaRondas" class="grilla-rondas"></div>
+
+      <div class="leyenda">
+        <span class="chip chip-gris"></span> Pendiente / futura
+        <span class="chip chip-amarillo"></span> A realizar ahora
+        <span class="chip chip-verde"></span> Completada a tiempo
+        <span class="chip chip-rojo"></span> Vencida / fuera de término
+      </div>
+
+      <div class="botonera">
+        <button class="btn btn-secundario" onclick="mostrarDatosTurno()">Datos del turno (producto / velocidad)</button>
+        <button class="btn btn-secundario" onclick="mostrarDashboard()">Ver indicadores</button>
+        <button class="btn btn-texto" onclick="cambiarSector()">Cambiar de sector / operario</button>
+      </div>
+    </section>
+
+    <section id="pantallaRonda" class="pantalla oculto">
+      <div class="ronda-header">
+        <button class="btn-volver" onclick="volverInicio()">&larr; Volver</button>
+        <div>
+          <b id="lblRondaTitulo">Ronda</b>
+          <div id="lblRondaHora" class="ronda-hora"></div>
+        </div>
+      </div>
+      <div id="contenedorItemsRonda"></div>
+      <div class="footer-fijo">
+        <div id="progresoRonda" class="progreso">0 / 0 ítems</div>
+        <button id="btnGuardarRonda" class="btn btn-primary">Guardar recorrida</button>
+      </div>
+    </section>
+
+    <section id="pantallaDatosTurno" class="pantalla oculto">
+      <div class="ronda-header">
+        <button class="btn-volver" onclick="volverInicio()">&larr; Volver</button>
+        <b>Datos del turno</b>
+      </div>
+      <div class="card">
+        <label>Jefe de turno</label>
+        <input id="inJefeTurno" type="text" placeholder="Nombre del jefe de turno">
+        <label>Tipo y gramaje</label>
+        <input id="inTipoGramaje" type="text" placeholder="Ej: Liner 250g">
+        <label>Velocidad</label>
+        <input id="inVelocidad" type="text" placeholder="Ej: 450 m/min">
+        <button class="btn btn-primary" onclick="guardarDatosTurno()">Guardar</button>
+      </div>
+    </section>
+
+    <section id="pantallaDashboard" class="pantalla oculto">
+      <div class="ronda-header">
+        <button class="btn-volver" onclick="volverInicio()">&larr; Volver</button>
+        <b>Indicadores de cumplimiento</b>
+      </div>
+      <div class="card filtros-dash">
+        <label>Desde</label>
+        <input id="dashDesde" type="date">
+        <label>Hasta</label>
+        <input id="dashHasta" type="date">
+        <label>Operario</label>
+        <select id="dashOperario"></select>
+        <label>Turno</label>
+        <select id="dashTurno">
+          <option>(Todos)</option>
+          <option>Mañana</option>
+          <option>Tarde</option>
+          <option>Noche</option>
+        </select>
+        <button class="btn btn-primary" onclick="cargarDashboard()">Aplicar</button>
+      </div>
+      <div id="resumenDash" class="resumen-dash"></div>
+      <h3 class="section-title">Cumplimiento por operario</h3>
+      <div id="dashOperarioLista"></div>
+      <h3 class="section-title">Cumplimiento por turno</h3>
+      <div id="dashTurnoLista"></div>
+    </section>
+
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
