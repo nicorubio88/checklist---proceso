@@ -80,6 +80,16 @@ select, input[type="text"], input[type="date"] {
 .btn-primary:disabled { background: var(--gris); }
 .btn-secundario { background: white; color: var(--verde-mas-oscuro); border: 1px solid var(--verde); margin-top: 10px; }
 .btn-texto { background: none; border: none; color: #888; font-size: 12px; text-decoration: underline; margin-top: 14px; cursor: pointer; padding: 6px; }
+.btn-ayuda { display: block; margin: 4px auto 0; text-align: center; }
+
+.ayuda-intro { font-size: 13px; color: #555; margin: 0 0 14px; line-height: 1.5; }
+.diagrama-ayuda { width: 100%; height: auto; display: block; }
+.d-titulo { font-size: 13px; font-weight: 700; fill: #2E4A1C; font-family: "Plus Jakarta Sans", sans-serif; }
+.d-sub { font-size: 11px; fill: #666; font-family: "Plus Jakarta Sans", sans-serif; }
+.d-amarillo { fill: #7a5f00; }
+.d-leyenda-titulo { font-size: 13px; font-weight: 700; fill: #2E4A1C; font-family: "Plus Jakarta Sans", sans-serif; }
+.d-leyenda { font-size: 12px; fill: #333; font-family: "Plus Jakarta Sans", sans-serif; }
+.d-nota { font-size: 11px; fill: #777; font-family: "Plus Jakarta Sans", sans-serif; }
 
 .badge-sector {
   display: inline-block;
@@ -234,3 +244,63 @@ select, input[type="text"], input[type="date"] {
 .barra-cab { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 3px; }
 .barra-track { background: #E5E5E0; border-radius: 6px; height: 10px; overflow: hidden; }
 .barra-fill { height: 100%; border-radius: 6px; }
+
+/* --- header: reloj + badge de desvíos --- */
+.header-derecha { display: flex; align-items: center; gap: 10px; }
+.badge-desvios {
+  background: var(--rojo);
+  color: white;
+  font-size: 12px;
+  font-weight: 800;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+}
+
+.lbl-supervisor { font-size: 12px; color: #666; margin-top: 2px; }
+
+/* --- disciplina operativa en vivo --- */
+.disciplina-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: white;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 14px 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-left: 5px solid var(--gris);
+}
+.disciplina-card.disciplina-alta { border-left-color: var(--verde); }
+.disciplina-card.disciplina-media { border-left-color: var(--amarillo); }
+.disciplina-card.disciplina-baja { border-left-color: var(--rojo); }
+.disciplina-pct { font-size: 30px; font-weight: 800; color: var(--verde-mas-oscuro); min-width: 64px; }
+.disciplina-titulo { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: #888; font-weight: 700; }
+.disciplina-texto { font-size: 13px; color: #444; margin-top: 2px; }
+
+/* --- panel de desvíos del turno --- */
+.lista-desvios { margin-bottom: 10px; }
+.sin-desvios { font-size: 13px; color: #888; text-align: center; padding: 12px 0; }
+.desvio-row {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  border-left: 4px solid var(--rojo);
+}
+.desvio-cab { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.desvio-hora { font-size: 11px; color: #888; font-weight: 700; text-transform: uppercase; }
+.desvio-badge { background: var(--rojo); color: white; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
+.desvio-item { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.desvio-obs { font-size: 13px; color: #555; margin-bottom: 4px; }
+.desvio-declaro { font-size: 11px; color: #999; margin-bottom: 8px; }
+.btn-cerrar-desvio { margin-top: 0; }
+.form-cierre { margin-top: 10px; }
+.sel-cierra { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #D6D6D0; font-size: 13px; margin: 6px 0 8px; font-family: inherit; }
+
+.dash-intro { font-size: 12px; color: #777; margin: 0 0 10px; }

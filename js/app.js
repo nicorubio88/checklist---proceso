@@ -1,6 +1,8 @@
 const ESTADO = {
   sector: null,
   operario: null,
+  supervisor: null,
+  personalActual: [],
   rondaActual: null,
   checklistCache: {},
   respuestasRonda: {}
@@ -13,16 +15,26 @@ window.addEventListener('DOMContentLoaded', () => {
   setInterval(actualizarReloj, 1000);
   cargarSectores();
 
-  document.getElementById('btnIngresar').onclick = () => {
+  document.getElementById('btnIngresar').onclick = async () => {
     ESTADO.sector = document.getElementById('selSector').value;
     ESTADO.operario = document.getElementById('selOperario').value;
+    ESTADO.supervisor = document.getElementById('selSupervisor').value;
     ESTADO.checklistCache = {};
     document.getElementById('lblOperario').textContent = ESTADO.operario;
+    document.getElementById('lblSupervisor').textContent = ESTADO.supervisor && ESTADO.supervisor !== '(No especifica)'
+      ? 'Supervisor: ' + ESTADO.supervisor : '';
     document.getElementById('lblSectorActual').textContent = 'Sector: ' + ESTADO.sector;
     document.getElementById('pantallaLogin').classList.add('oculto');
     document.getElementById('pantallaInicio').classList.remove('oculto');
+
+    apiPost('turno_datos', { sector: ESTADO.sector, operario: ESTADO.operario, supervisor: ESTADO.supervisor }).catch(() => {});
+
     refrescarSemaforo();
+    refrescarDisciplina();
+    refrescarDesvios();
     setInterval(refrescarSemaforo, 30000);
+    setInterval(refrescarDisciplina, 30000);
+    setInterval(refrescarDesvios, 30000);
   };
 });
 
@@ -54,9 +66,15 @@ async function cargarSectores() {
 
 async function cargarPersonalDeSector(sector) {
   const selOp = document.getElementById('selOperario');
+  const selSup = document.getElementById('selSupervisor');
   selOp.disabled = true;
+  selSup.disabled = true;
   selOp.innerHTML = '<option value="">Cargando personal...</option>';
+  selSup.innerHTML = '<option value="">Cargando personal...</option>';
+
   const lista = await apiGet('personal', { sector });
+  ESTADO.personalActual = lista.map(p => p.nombre);
+
   selOp.innerHTML = '<option value="">Seleccionar...</option>';
   lista.forEach(p => {
     const opt = document.createElement('option');
@@ -67,6 +85,14 @@ async function cargarPersonalDeSector(sector) {
   selOp.onchange = () => {
     document.getElementById('btnIngresar').disabled = !selOp.value;
   };
+
+  selSup.innerHTML = '<option value="(No especifica)">(No especifica)</option>';
+  lista.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.nombre; opt.textContent = p.nombre;
+    selSup.appendChild(opt);
+  });
+  selSup.disabled = false;
 }
 
 function cambiarSector() {
@@ -81,10 +107,20 @@ function cambiarSector() {
   document.getElementById('pantallaLogin').classList.remove('oculto');
 }
 
+function mostrarAyuda() {
+  document.getElementById('pantallaLogin').classList.add('oculto');
+  document.getElementById('pantallaAyuda').classList.remove('oculto');
+}
+
+function volverDesdeAyuda() {
+  document.getElementById('pantallaAyuda').classList.add('oculto');
+  document.getElementById('pantallaLogin').classList.remove('oculto');
+}
+
 // ---------- NAVEGACIÓN ----------
 
 function ocultarTodasMenosInicio() {
-  ['pantallaRonda', 'pantallaDatosTurno', 'pantallaDashboard'].forEach(id => {
+  ['pantallaRonda', 'pantallaDashboard'].forEach(id => {
     document.getElementById(id).classList.add('oculto');
   });
 }
@@ -93,6 +129,8 @@ function volverInicio() {
   ocultarTodasMenosInicio();
   document.getElementById('pantallaInicio').classList.remove('oculto');
   refrescarSemaforo();
+  refrescarDisciplina();
+  refrescarDesvios();
 }
 
 // ---------- SEMÁFORO DE RONDAS ----------
@@ -270,21 +308,120 @@ async function guardarRonda() {
 
 // ---------- DATOS DE TURNO ----------
 
-function mostrarDatosTurno() {
-  ocultarTodasMenosInicio();
-  document.getElementById('pantallaInicio').classList.add('oculto');
-  document.getElementById('pantallaDatosTurno').classList.remove('oculto');
+// ---------- DISCIPLINA OPERATIVA EN VIVO (turno vigente) ----------
+
+async function refrescarDisciplina() {
+  if (!ESTADO.sector) return;
+  const d = await apiGet('disciplina_turno', { sector: ESTADO.sector });
+  document.getElementById('disciplinaPct').textContent = d.pctCumplimiento + '%';
+  document.getElementById('disciplinaTexto').textContent =
+    d.rondasATiempo + ' de ' + d.rondasEsperadas + ' recorridas cumplidas a tiempo hasta ahora';
+
+  const card = document.getElementById('disciplinaTurno');
+  card.classList.remove('disciplina-alta', 'disciplina-media', 'disciplina-baja');
+  if (d.pctCumplimiento >= 90) card.classList.add('disciplina-alta');
+  else if (d.pctCumplimiento >= 70) card.classList.add('disciplina-media');
+  else card.classList.add('disciplina-baja');
 }
 
-async function guardarDatosTurno() {
-  await apiPost('turno_datos', {
-    sector: ESTADO.sector, operario: ESTADO.operario,
-    jefeTurno: document.getElementById('inJefeTurno').value,
-    tipoGramaje: document.getElementById('inTipoGramaje').value,
-    velocidad: document.getElementById('inVelocidad').value
+// ---------- DESVÍOS DEL TURNO (persisten hasta que se cierran) ----------
+
+async function refrescarDesvios() {
+  if (!ESTADO.sector) return;
+  const desvios = await apiGet('desvios_abiertos', { sector: ESTADO.sector });
+  actualizarBadgeDesvios(desvios.length);
+  pintarListaDesvios(desvios);
+}
+
+function actualizarBadgeDesvios(cantidad) {
+  const badge = document.getElementById('badgeDesvios');
+  if (cantidad > 0) {
+    badge.textContent = cantidad;
+    badge.classList.remove('oculto');
+  } else {
+    badge.classList.add('oculto');
+  }
+}
+
+function pintarListaDesvios(desvios) {
+  const cont = document.getElementById('listaDesvios');
+  if (!desvios || desvios.length === 0) {
+    cont.innerHTML = '<p class="sin-desvios">No hay desvíos abiertos.</p>';
+    return;
+  }
+  cont.innerHTML = '';
+  desvios.forEach(d => cont.appendChild(crearFilaDesvio(d)));
+}
+
+function crearFilaDesvio(d) {
+  const row = document.createElement('div');
+  row.className = 'desvio-row';
+
+  const cab = document.createElement('div');
+  cab.className = 'desvio-cab';
+  cab.innerHTML = '<span class="desvio-hora">Ronda ' + d.rondaNum + '° · ' + d.horaDetectado + ' · ' + d.turno + '</span>' +
+    '<span class="desvio-badge">Abierto</span>';
+  row.appendChild(cab);
+
+  const item = document.createElement('div');
+  item.className = 'desvio-item';
+  item.textContent = '[' + d.bloque + (d.grupo ? ' / ' + d.grupo : '') + '] ' + d.item;
+  row.appendChild(item);
+
+  const obs = document.createElement('div');
+  obs.className = 'desvio-obs';
+  obs.textContent = 'Observación: ' + (d.observacion || '(sin observación)');
+  row.appendChild(obs);
+
+  const declaro = document.createElement('div');
+  declaro.className = 'desvio-declaro';
+  declaro.textContent = 'Declarado por: ' + d.operario + ' · ' + d.fecha;
+  row.appendChild(declaro);
+
+  const btnAbrirCierre = document.createElement('button');
+  btnAbrirCierre.className = 'btn btn-secundario btn-cerrar-desvio';
+  btnAbrirCierre.textContent = 'Cerrar desvío';
+
+  const formCierre = document.createElement('div');
+  formCierre.className = 'form-cierre oculto';
+  const taAccion = document.createElement('textarea');
+  taAccion.className = 'item-obs visible';
+  taAccion.rows = 2;
+  taAccion.placeholder = 'Acción tomada para resolver el desvío (obligatorio)';
+  const selQuienCierra = document.createElement('select');
+  selQuienCierra.className = 'sel-cierra';
+  ESTADO.personalActual.forEach(n => {
+    const opt = document.createElement('option');
+    opt.value = n; opt.textContent = n;
+    selQuienCierra.appendChild(opt);
   });
-  alert('Datos del turno guardados.');
-  volverInicio();
+  const btnConfirmarCierre = document.createElement('button');
+  btnConfirmarCierre.className = 'btn btn-primary';
+  btnConfirmarCierre.textContent = 'Confirmar cierre';
+  btnConfirmarCierre.onclick = async () => {
+    if (!taAccion.value.trim()) { alert('Falta describir la acción tomada.'); return; }
+    btnConfirmarCierre.disabled = true;
+    try {
+      await apiPost('cerrar_desvio', { desvioId: d.id, accionCierre: taAccion.value, cerradoPor: selQuienCierra.value || ESTADO.operario });
+      await refrescarDesvios();
+    } catch (err) {
+      alert('Error al cerrar el desvío: ' + err.message);
+      btnConfirmarCierre.disabled = false;
+    }
+  };
+
+  const lblQuienCierra = document.createElement('label');
+  lblQuienCierra.textContent = 'Quién cierra';
+  formCierre.appendChild(taAccion);
+  formCierre.appendChild(lblQuienCierra);
+  formCierre.appendChild(selQuienCierra);
+  formCierre.appendChild(btnConfirmarCierre);
+
+  btnAbrirCierre.onclick = () => formCierre.classList.toggle('oculto');
+
+  row.appendChild(btnAbrirCierre);
+  row.appendChild(formCierre);
+  return row;
 }
 
 // ---------- DASHBOARD ----------
@@ -294,10 +431,12 @@ async function mostrarDashboard() {
   document.getElementById('pantallaInicio').classList.add('oculto');
   document.getElementById('pantallaDashboard').classList.remove('oculto');
 
-  const hoy = new Date();
-  const hace7 = new Date(hoy.getTime() - 7 * 86400000);
-  document.getElementById('dashDesde').value = hace7.toISOString().slice(0, 10);
-  document.getElementById('dashHasta').value = hoy.toISOString().slice(0, 10);
+  // Por defecto: turno vigente (misma fecha operativa que usa el semáforo,
+  // no la fecha del navegador, para que el turno Noche no se corte a medianoche).
+  const infoTurno = await apiGet('estado_turno', { sector: ESTADO.sector });
+  document.getElementById('dashDesde').value = infoTurno.fecha;
+  document.getElementById('dashHasta').value = infoTurno.fecha;
+  document.getElementById('dashTurno').value = infoTurno.turno;
 
   const lista = await apiGet('operarios_filtro', { sector: ESTADO.sector });
   const sel = document.getElementById('dashOperario');
