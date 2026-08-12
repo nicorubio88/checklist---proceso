@@ -6,7 +6,8 @@ const ESTADO = {
   rondaActual: null,
   checklistCache: {},
   respuestasRonda: {},
-  intervaloPolling: null
+  intervaloPolling: null,
+  pantallaPrevia: null
 };
 
 // ---------- INICIALIZACIÓN ----------
@@ -153,14 +154,33 @@ function cambiarSector() {
   document.getElementById('pantallaLogin').classList.remove('oculto');
 }
 
+function pantallaActivaId() {
+  const todas = ['pantallaLogin', 'pantallaAyuda', 'pantallaInicio', 'pantallaRonda', 'pantallaDashboard'];
+  return todas.find(id => !document.getElementById(id).classList.contains('oculto'));
+}
+
+function ocultarTodasLasPantallas() {
+  ['pantallaLogin', 'pantallaAyuda', 'pantallaInicio', 'pantallaRonda', 'pantallaDashboard'].forEach(id => {
+    document.getElementById(id).classList.add('oculto');
+  });
+}
+
 function mostrarAyuda() {
-  document.getElementById('pantallaLogin').classList.add('oculto');
+  ESTADO.pantallaPrevia = pantallaActivaId();
+  ocultarTodasLasPantallas();
   document.getElementById('pantallaAyuda').classList.remove('oculto');
 }
 
 function volverDesdeAyuda() {
   document.getElementById('pantallaAyuda').classList.add('oculto');
-  document.getElementById('pantallaLogin').classList.remove('oculto');
+  const previa = ESTADO.pantallaPrevia;
+  if (previa === 'pantallaInicio') {
+    volverInicio();
+  } else if (previa === 'pantallaRonda' || previa === 'pantallaDashboard') {
+    document.getElementById(previa).classList.remove('oculto');
+  } else {
+    document.getElementById('pantallaLogin').classList.remove('oculto');
+  }
 }
 
 // ---------- NAVEGACIÓN ----------
@@ -494,8 +514,12 @@ function crearFilaDesvio(d) {
 // ---------- DASHBOARD ----------
 
 async function mostrarDashboard() {
-  ocultarTodasMenosInicio();
-  document.getElementById('pantallaInicio').classList.add('oculto');
+  if (!ESTADO.sector) {
+    alert('Elegí un sector e ingresá primero para ver los indicadores.');
+    return;
+  }
+  ESTADO.pantallaPrevia = pantallaActivaId();
+  ocultarTodasLasPantallas();
   document.getElementById('pantallaDashboard').classList.remove('oculto');
 
   // Por defecto: turno vigente (misma fecha operativa que usa el semáforo,
