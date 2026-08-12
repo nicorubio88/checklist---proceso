@@ -32,15 +32,17 @@ body {
   top: 0;
   z-index: 10;
 }
-.brand { display: flex; align-items: center; gap: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; overflow: hidden; }
+.brand > div { min-width: 0; overflow: hidden; }
+.brand-title { display: block; font-weight: 700; font-size: 16px; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-sub { display: block; font-size: 11px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reloj { font-variant-numeric: tabular-nums; font-size: 13px; opacity: 0.9; white-space: nowrap; }
 .volver-portal {
   color: white; text-decoration: none; font-size: 20px; font-weight: 700;
   width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
   border-radius: 6px; background: rgba(255,255,255,0.15);
+  flex-shrink: 0;
 }
-.brand-title { display: block; font-weight: 700; font-size: 16px; letter-spacing: 0.5px; }
-.brand-sub { display: block; font-size: 11px; opacity: 0.85; }
-.reloj { font-variant-numeric: tabular-nums; font-size: 14px; opacity: 0.9; }
 
 .pantalla { padding: 14px; padding-bottom: 90px; max-width: 640px; margin: 0 auto; }
 
@@ -80,7 +82,7 @@ select, input[type="text"], input[type="date"] {
 .btn-primary:disabled { background: var(--gris); }
 .btn-secundario { background: white; color: var(--verde-mas-oscuro); border: 1px solid var(--verde); margin-top: 10px; }
 .btn-texto { background: none; border: none; color: #888; font-size: 12px; text-decoration: underline; margin-top: 14px; cursor: pointer; padding: 6px; }
-.btn-ayuda { display: block; margin: 4px auto 0; text-align: center; }
+
 
 .ayuda-intro { font-size: 13px; color: #555; margin: 0 0 14px; line-height: 1.5; }
 .diagrama-ayuda { width: 100%; height: auto; display: block; }
@@ -246,7 +248,22 @@ select, input[type="text"], input[type="date"] {
 .barra-fill { height: 100%; border-radius: 6px; }
 
 /* --- header: reloj + badge de desvíos --- */
-.header-derecha { display: flex; align-items: center; gap: 10px; }
+.header-derecha { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.icono-header {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+.icono-header:hover { background: rgba(255,255,255,0.28); }
+.icono-header:active { background: rgba(255,255,255,0.4); }
 .badge-desvios {
   background: var(--rojo);
   color: white;
@@ -304,3 +321,16 @@ select, input[type="text"], input[type="date"] {
 .sel-cierra { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #D6D6D0; font-size: 13px; margin: 6px 0 8px; font-family: inherit; }
 
 .dash-intro { font-size: 12px; color: #777; margin: 0 0 10px; }
+
+.error-carga {
+  background: #FCEBEB;
+  border: 1px solid #E8A5A5;
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+  grid-column: 1 / -1;
+}
+.error-carga p { margin: 0 0 6px; font-size: 14px; color: #7A2020; }
+.error-carga .error-detalle { font-size: 12px; color: #9a4a4a; margin-bottom: 12px; }
+.error-carga .btn { max-width: 220px; margin: 0 auto; }
+.error-login { margin-top: 14px; }
