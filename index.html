@@ -23,6 +23,12 @@
         </div>
       </div>
       <div class="header-derecha">
+        <button id="btnAyudaHeader" class="icono-header" onclick="mostrarAyuda()" title="¿Cómo funciona?" aria-label="¿Cómo funciona?">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5"/><line x1="12" y1="17" x2="12" y2="17.01"/></svg>
+        </button>
+        <button id="btnIndicadoresHeader" class="icono-header" onclick="mostrarDashboard()" title="Indicadores" aria-label="Indicadores">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="20" y1="20" x2="20" y2="15"/></svg>
+        </button>
         <div id="badgeDesvios" class="badge-desvios oculto" title="Desvíos abiertos">0</div>
         <div id="reloj" class="reloj">--:--:--</div>
       </div>
@@ -39,7 +45,6 @@
         <select id="selSupervisor" disabled><option value="">Elegí primero el sector</option></select>
         <button id="btnIngresar" class="btn btn-primary" disabled>Ingresar</button>
       </div>
-      <button class="btn btn-texto btn-ayuda" onclick="mostrarAyuda()">¿Cómo funciona? Ver diagrama</button>
     </section>
 
     <section id="pantallaAyuda" class="pantalla oculto">
@@ -143,7 +148,6 @@
       <div id="listaDesvios" class="lista-desvios"><p class="sin-desvios">Cargando...</p></div>
 
       <div class="botonera">
-        <button class="btn btn-secundario" onclick="mostrarDashboard()">Ver indicadores</button>
         <button class="btn btn-texto" onclick="cambiarSector()">Cambiar de sector / operario</button>
       </div>
     </section>
