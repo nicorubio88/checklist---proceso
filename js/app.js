@@ -5,7 +5,8 @@ const ESTADO = {
   personalActual: [],
   rondaActual: null,
   checklistCache: {},
-  respuestasRonda: {}
+  respuestasRonda: {},
+  intervaloPolling: null
 };
 
 // ---------- INICIALIZACIÓN ----------
@@ -14,6 +15,14 @@ window.addEventListener('DOMContentLoaded', () => {
   actualizarReloj();
   setInterval(actualizarReloj, 1000);
   cargarSectores();
+
+  // Pausar el polling en segundo plano (pestaña no visible) para no gastar
+  // llamadas de más, y refrescar al instante cuando se vuelve a la pestaña.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && ESTADO.sector && !document.getElementById('pantallaInicio').classList.contains('oculto')) {
+      refrescarInicio();
+    }
+  });
 
   document.getElementById('btnIngresar').onclick = async () => {
     ESTADO.sector = document.getElementById('selSector').value;
@@ -29,12 +38,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
     apiPost('turno_datos', { sector: ESTADO.sector, operario: ESTADO.operario, supervisor: ESTADO.supervisor }).catch(() => {});
 
-    refrescarSemaforo();
-    refrescarDisciplina();
-    refrescarDesvios();
-    setInterval(refrescarSemaforo, 30000);
-    setInterval(refrescarDisciplina, 30000);
-    setInterval(refrescarDesvios, 30000);
+    refrescarInicio();
+    if (ESTADO.intervaloPolling) clearInterval(ESTADO.intervaloPolling);
+    ESTADO.intervaloPolling = setInterval(() => {
+      if (document.visibilityState === 'visible') refrescarInicio();
+    }, 30000);
   };
 });
 
@@ -44,24 +52,54 @@ function actualizarReloj() {
 }
 
 async function cargarSectores() {
-  const sectores = await apiGet('sectores');
   const sel = document.getElementById('selSector');
-  sel.innerHTML = '<option value="">Seleccionar...</option>';
-  sectores.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s; opt.textContent = s;
-    sel.appendChild(opt);
-  });
-  sel.onchange = () => {
-    if (sel.value) {
-      cargarPersonalDeSector(sel.value);
-    } else {
-      const selOp = document.getElementById('selOperario');
-      selOp.disabled = true;
-      selOp.innerHTML = '<option value="">Elegí primero el sector</option>';
-      document.getElementById('btnIngresar').disabled = true;
+  sel.innerHTML = '<option value="">Cargando sectores...</option>';
+  try {
+    // cache de 2 minutos: los sectores casi no cambian, evita pegarle a
+    // Apps Script de nuevo cada vez que alguien recarga la pantalla de login
+    const sectores = await apiGet('sectores', null, { cacheMs: 120000 });
+    if (!sectores || sectores.length === 0) {
+      sel.innerHTML = '<option value="">No hay sectores activos configurados</option>';
+      return;
     }
-  };
+    sel.innerHTML = '<option value="">Seleccionar...</option>';
+    sectores.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      sel.appendChild(opt);
+    });
+    sel.onchange = () => {
+      if (sel.value) {
+        cargarPersonalDeSector(sel.value);
+      } else {
+        const selOp = document.getElementById('selOperario');
+        selOp.disabled = true;
+        selOp.innerHTML = '<option value="">Elegí primero el sector</option>';
+        document.getElementById('btnIngresar').disabled = true;
+      }
+    };
+  } catch (err) {
+    sel.innerHTML = '<option value="">Error al cargar - tocá para reintentar</option>';
+    sel.onclick = () => { if (sel.value === '') cargarSectores(); };
+    mostrarErrorLogin(err.message);
+  }
+}
+
+function mostrarErrorLogin(mensaje) {
+  let aviso = document.getElementById('avisoErrorLogin');
+  if (!aviso) {
+    aviso = document.createElement('div');
+    aviso.id = 'avisoErrorLogin';
+    aviso.className = 'error-carga error-login';
+    document.querySelector('#pantallaLogin .card').appendChild(aviso);
+  }
+  aviso.innerHTML = '<p>No se pudo conectar con el servidor.</p><p class="error-detalle"></p>';
+  aviso.querySelector('.error-detalle').textContent = mensaje;
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-secundario';
+  btn.textContent = 'Reintentar';
+  btn.onclick = () => { aviso.remove(); cargarSectores(); };
+  aviso.appendChild(btn);
 }
 
 async function cargarPersonalDeSector(sector) {
@@ -72,7 +110,15 @@ async function cargarPersonalDeSector(sector) {
   selOp.innerHTML = '<option value="">Cargando personal...</option>';
   selSup.innerHTML = '<option value="">Cargando personal...</option>';
 
-  const lista = await apiGet('personal', { sector });
+  let lista;
+  try {
+    lista = await apiGet('personal', { sector }, { cacheMs: 120000 });
+  } catch (err) {
+    selOp.innerHTML = '<option value="">Error al cargar - elegí el sector de nuevo</option>';
+    selSup.innerHTML = '<option value="">Error al cargar</option>';
+    mostrarErrorLogin(err.message);
+    return;
+  }
   ESTADO.personalActual = lista.map(p => p.nombre);
 
   selOp.innerHTML = '<option value="">Seleccionar...</option>';
@@ -128,16 +174,46 @@ function ocultarTodasMenosInicio() {
 function volverInicio() {
   ocultarTodasMenosInicio();
   document.getElementById('pantallaInicio').classList.remove('oculto');
-  refrescarSemaforo();
-  refrescarDisciplina();
-  refrescarDesvios();
+  refrescarInicio();
 }
 
 // ---------- SEMÁFORO DE RONDAS ----------
 
-async function refrescarSemaforo() {
+/**
+ * Trae en UNA sola llamada el estado del semáforo, la disciplina operativa
+ * y los desvíos abiertos (antes eran 3 llamadas separadas). Si falla,
+ * muestra un error claro con botón de reintentar en vez de dejar la
+ * pantalla colgada.
+ */
+async function refrescarInicio() {
   if (!ESTADO.sector) return;
-  const info = await apiGet('estado_turno', { sector: ESTADO.sector });
+  try {
+    const data = await apiGet('estado_inicio', { sector: ESTADO.sector });
+    pintarSemaforo(data.estadoTurno);
+    pintarDisciplina(data.disciplina);
+    actualizarBadgeDesvios(data.desviosAbiertos.length);
+    pintarListaDesvios(data.desviosAbiertos);
+  } catch (err) {
+    mostrarErrorInicio(err.message);
+  }
+}
+
+function mostrarErrorInicio(mensaje) {
+  const grilla = document.getElementById('grillaRondas');
+  grilla.innerHTML = '';
+  const aviso = document.createElement('div');
+  aviso.className = 'error-carga';
+  aviso.innerHTML = '<p>No se pudo conectar con el servidor.</p><p class="error-detalle"></p>';
+  aviso.querySelector('.error-detalle').textContent = mensaje;
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-primary';
+  btn.textContent = 'Reintentar';
+  btn.onclick = refrescarInicio;
+  aviso.appendChild(btn);
+  grilla.appendChild(aviso);
+}
+
+function pintarSemaforo(info) {
   document.getElementById('lblTurnoFecha').textContent = 'Turno ' + info.turno + ' · ' + info.fecha;
   const grilla = document.getElementById('grillaRondas');
   grilla.innerHTML = '';
@@ -310,9 +386,7 @@ async function guardarRonda() {
 
 // ---------- DISCIPLINA OPERATIVA EN VIVO (turno vigente) ----------
 
-async function refrescarDisciplina() {
-  if (!ESTADO.sector) return;
-  const d = await apiGet('disciplina_turno', { sector: ESTADO.sector });
+function pintarDisciplina(d) {
   document.getElementById('disciplinaPct').textContent = d.pctCumplimiento + '%';
   document.getElementById('disciplinaTexto').textContent =
     d.rondasATiempo + ' de ' + d.rondasEsperadas + ' recorridas cumplidas a tiempo hasta ahora';
@@ -325,13 +399,6 @@ async function refrescarDisciplina() {
 }
 
 // ---------- DESVÍOS DEL TURNO (persisten hasta que se cierran) ----------
-
-async function refrescarDesvios() {
-  if (!ESTADO.sector) return;
-  const desvios = await apiGet('desvios_abiertos', { sector: ESTADO.sector });
-  actualizarBadgeDesvios(desvios.length);
-  pintarListaDesvios(desvios);
-}
 
 function actualizarBadgeDesvios(cantidad) {
   const badge = document.getElementById('badgeDesvios');
@@ -403,7 +470,7 @@ function crearFilaDesvio(d) {
     btnConfirmarCierre.disabled = true;
     try {
       await apiPost('cerrar_desvio', { desvioId: d.id, accionCierre: taAccion.value, cerradoPor: selQuienCierra.value || ESTADO.operario });
-      await refrescarDesvios();
+      await refrescarInicio();
     } catch (err) {
       alert('Error al cerrar el desvío: ' + err.message);
       btnConfirmarCierre.disabled = false;
